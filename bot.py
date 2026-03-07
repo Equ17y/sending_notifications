@@ -15,7 +15,7 @@ telegram_url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
 
 headers = {'Authorization': f'Token {TOKEN}'}
 
-timestamp = time.time()  # Начинаем с текущего времени
+timestamp = time.time()
 
 
 def send_notification(text):
@@ -36,7 +36,6 @@ while True:
                 is_negative = attempt['is_negative']
                 lesson_url = attempt.get('lesson_url', 'https://dvmn.org')
                 
-                # Формируем сообщение по заданию
                 if is_negative:
                     message = (
                         f'У вас проверили работу "{title}"\n\n'
@@ -48,19 +47,15 @@ while True:
                         f'Преподавателю все понравилось, можно приступать к следующему уроку!'
                     )
                 
-                #  Добавляем ссылку на урок (опционально, как в задании)
                 message += f'\n\n{lesson_url}'
                 
                 send_notification(message)
-        
-        # Обновляем timestamp из ответа сервера
+
         timestamp = data.get('last_attempt_timestamp') or data.get('timestamp_to_request') or time.time()
         
     except ReadTimeout:
-        # Сервер не ответил за 5 секунд — повторяем запрос
         pass
     
     except ConnectionError:
-        # Нет соединения с интернетом — ждём и повторяем запрос
         pass
 
