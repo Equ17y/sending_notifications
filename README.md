@@ -1,13 +1,13 @@
 # Telegram-бот для уведомлений о проверке работ Devman
 
-Бот следит за проверками работ на платформе Devman и присылает уведомления в Telegram.
+Бот следит за проверками работ на платформе [Devman](https://dvmn.org) и присылает уведомления в Telegram.
 
 ## Установка и запуск
 
 ### 1. Клонируйте репозиторий
 
 ```bash
-git clone https://github.com/ТВОЙ_НИК/dvmn-telegram-bot.git
+git clone https://github.com/Equ17y/dvmn-telegram-bot.git
 cd dvmn-telegram-bot
 ```
 
@@ -27,9 +27,9 @@ pip install -r requirements.txt
 ### 4. Настройте файл .env
 
 ```bash
-TOKEN=ваш_токен_от_Devman
+DVMN_TOKEN=ваш_токен_от_Devman
 TELEGRAM_TOKEN=ваш_токен_telegram_bot
-CHAT_ID=ваш_chat_id
+TG_CHAT_ID=ваш_chat_id
 ```
 
 ### 5.Запустите бота

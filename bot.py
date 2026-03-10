@@ -1,61 +1,80 @@
-import requests
-import time
 import os
+import time
+import requests
 from dotenv import load_dotenv
 from requests.exceptions import ReadTimeout, ConnectionError
 
-load_dotenv()
 
-TOKEN = os.getenv('TOKEN')
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-CHAT_ID = os.getenv('CHAT_ID')
-
-url = 'https://dvmn.org/api/long_polling/'
-telegram_url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
-
-headers = {'Authorization': f'Token {TOKEN}'}
-
-timestamp = time.time()
+DVMN_API_URL = 'https://dvmn.org/api/long_polling/'
+TELEGRAM_API_URL = 'https://api.telegram.org/bot{token}/sendMessage'
 
 
-def send_notification(text):
-    data = {'chat_id': CHAT_ID, 'text': text}
-    requests.post(telegram_url, data=data)
-
-while True:
+def send_notification(text, chat_id, telegram_token):
+    url = TELEGRAM_API_URL.format(token=telegram_token)
+    payload = {'chat_id': chat_id, 'text': text}
+    requests.post(url, data=payload)
+    
+    
+def get_dvmn_checks(timestamp, dvmn_token):
+    headers = {'Authorization': f'Token {dvmn_token}'}
     params = {'timestamp': timestamp}
-    
-    try:
-        response = requests.get(url, headers=headers, params=params, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        
-        if data.get('status') == 'found':
-            for attempt in data['new_attempts']:
-                title = attempt['lesson_title']
-                is_negative = attempt['is_negative']
-                lesson_url = attempt.get('lesson_url', 'https://dvmn.org')
-                
-                if is_negative:
-                    message = (
-                        f'У вас проверили работу "{title}"\n\n'
-                        f'К сожалению, в работе нашлись ошибки'
-                    )
-                else:
-                    message = (
-                        f'У вас проверили работу "{title}"\n\n'
-                        f'Преподавателю все понравилось, можно приступать к следующему уроку!'
-                    )
-                
-                message += f'\n\n{lesson_url}'
-                
-                send_notification(message)
+    response = requests.get(DVMN_API_URL, headers=headers, params=params, timeout=5)
+    response.raise_for_status()
+    return response.json()
 
-        timestamp = data.get('last_attempt_timestamp') or data.get('timestamp_to_request') or time.time()
-        
-    except ReadTimeout:
-        pass
-    
-    except ConnectionError:
-        pass
 
+def format_check_message(attempt):
+    title = attempt['lesson_title']
+    is_negative = attempt['is_negative']
+    lesson_url = attempt.get('lesson_url', 'https://dvmn.org')
+    
+    if is_negative:
+        text = (
+            f'У вас проверили работу "{title}"\n\n'
+            f'К сожалению, в работе нашлись ошибки '
+        )
+    else:
+        text = (
+            f'У вас проверили работу "{title}"\n\n'
+            f'Преподавателю все понравилось, можно приступать к следующему уроку!'
+        )
+    
+    text += f'\n\n{lesson_url}'
+    return text
+
+
+def main():
+    load_dotenv()
+
+    dvmn_token = os.environ['DVMN_TOKEN']
+    telegram_token = os.environ['TELEGRAM_TOKEN']
+    tg_chat_id = os.environ['TG_CHAT_ID']
+    
+    timestamp = time.time()
+    
+    while True:
+        params = {'timestamp': timestamp}
+        
+        try:
+            checks_response = get_dvmn_checks(timestamp, dvmn_token)
+            
+            if checks_response.get('status') == 'found':
+                for attempt in checks_response['new_attempts']:
+                    message = format_check_message(attempt)
+                    send_notification(message, tg_chat_id, telegram_token)
+                    
+            timestamp = (
+                checks_response.get('last_attempt_timestamp')
+                or checks_response.get('timestamp_to_request')
+                or time.time()
+            )
+            
+        except ReadTimeout:
+            pass
+        
+        except ConnectionError:
+            time.sleep(10)
+        
+        
+if __name__ == '__main__':
+    main()  
