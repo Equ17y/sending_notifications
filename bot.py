@@ -2,7 +2,7 @@ import os
 import time
 import requests
 from dotenv import load_dotenv
-from requests.exceptions import ReadTimeout, ConnectionError
+from requests.exceptions import ReadTimeout, ConnectionError, HTTPError
 
 
 DVMN_API_URL = 'https://dvmn.org/api/long_polling/'
@@ -12,7 +12,8 @@ TELEGRAM_API_URL = 'https://api.telegram.org/bot{token}/sendMessage'
 def send_notification(text, chat_id, telegram_token):
     url = TELEGRAM_API_URL.format(token=telegram_token)
     payload = {'chat_id': chat_id, 'text': text}
-    requests.post(url, data=payload)
+    response = requests.post(url, data=payload)
+    response.raise_for_status()
     
     
 def get_dvmn_checks(timestamp, dvmn_token):
@@ -61,7 +62,11 @@ def main():
             if checks_response.get('status') == 'found':
                 for attempt in checks_response['new_attempts']:
                     message = format_check_message(attempt)
-                    send_notification(message, tg_chat_id, telegram_token)
+                    
+                    try:
+                        send_notification(message, tg_chat_id, telegram_token)
+                    except HTTPError as e:
+                        print(f"Ошибка отправки в Telegram: {e}")
                     
             timestamp = (
                 checks_response.get('last_attempt_timestamp')
